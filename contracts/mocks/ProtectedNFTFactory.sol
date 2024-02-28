@@ -81,7 +81,7 @@ contract ProtectedNFTFactory is Initializable, OwnableUpgradeable, ReentrancyGua
     return (price * (10 ** ERC20(stableCoin).decimals())) / 100;
   }
 
-  function buySerpents(address stableCoin, uint256 amount) external virtual nonReentrant {
+  function buy(address stableCoin, uint256 amount) external virtual nonReentrant {
     uint256 payment = finalPrice(stableCoin) * amount;
     if (payment > ERC20(stableCoin).balanceOf(_msgSender())) revert InsufficientFunds();
     vault.safeMintAndActivate(_msgSender(), amount);

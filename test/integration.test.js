@@ -6,33 +6,49 @@ const deployUtils = new EthDeployUtils();
 
 const CrunaTestUtils = require("./helpers/CrunaTestUtils");
 
-const { amount, normalize, addr0, getChainId, getTimestamp } = require("./helpers");
+const { normalize, addr0, getChainId, getTimestamp, bytes4, keccak256 } = require("./helpers");
 
 describe("Integration test", function () {
   let crunaManagerProxy;
-  let vault;
+  let nft;
   let factory;
   let usdc;
-  let deployer, bob, alice, fred, mike;
+  let deployer, bob, alice;
+  let magicBadge, collBadge, superTransferableBadge;
+  let simplePlugin, upgradeablePluginImpl, upgradeablePluginProxy;
+  let erc6551Registry, crunaRegistry, crunaGuardian;
 
   before(async function () {
-    [deployer, bob, alice, fred, mike] = await ethers.getSigners();
-    await CrunaTestUtils.deployCanonical(deployer);
+    [deployer, bob, alice] = await ethers.getSigners();
+    [erc6551Registry, crunaRegistry, crunaGuardian] = await CrunaTestUtils.deployCanonical(deployer);
   });
 
   async function initAndDeploy() {
     crunaManagerProxy = await CrunaTestUtils.deployManager(deployer);
-    vault = await deployUtils.deploy("SomeProtectedNFT", deployer.address);
-    await vault.init(crunaManagerProxy.address, 1, true);
-    factory = await deployUtils.deployProxy("SerpentShieldsFactory", vault.address);
-    await vault.setFactory(factory.address);
+    nft = await deployUtils.deploy("SomeProtectedNFT", deployer.address);
+    await nft.init(crunaManagerProxy.address, 1, true);
+    factory = await deployUtils.deployProxy("ProtectedNFTFactory", nft.address);
+    await nft.setFactory(factory.address);
+
+    // stablecoin mock
     usdc = await deployUtils.deploy("USDCoin", deployer.address);
 
-    await usdc.mint(deployer.address, normalize("900"));
-    await usdc.mint(bob.address, normalize("900"));
-    await usdc.mint(fred.address, normalize("900"));
-    await usdc.mint(alice.address, normalize("900"));
-    await usdc.mint(mike.address, normalize("600"));
+    // badge mocks
+    magicBadge = await deployUtils.deploy("MagicBadge", deployer.address);
+    collBadge = await deployUtils.deploy("CoolBadge", deployer.address);
+    superTransferableBadge = await deployUtils.deploy("SuperTransferableBadge", deployer.address);
+
+    // deploy simple plugin
+    simplePlugin = await deployUtils.deploy("BadgeCollectorSimplePlugin");
+
+    // deploy upgradeable plugin
+    upgradeablePluginImpl = await deployUtils.deploy("BadgeCollectorUpgradeablePlugin");
+    upgradeablePluginProxy = await deployUtils.deploy("BadgeCollectorUpgradeablePluginProxy", upgradeablePluginImpl.address);
+    upgradeablePluginProxy = await deployUtils.attach("BadgeCollectorUpgradeablePlugin", upgradeablePluginProxy.address);
+
+    await usdc.mint(deployer.address, normalize("10000"));
+    await usdc.mint(bob.address, normalize("1000"));
+    await usdc.mint(alice.address, normalize("1000"));
 
     await expect(factory.setPrice(990)).to.emit(factory, "PriceSet").withArgs(990);
     await expect(factory.setStableCoin(usdc.address, true)).to.emit(factory, "StableCoinSet").withArgs(usdc.address, true);
@@ -43,82 +59,95 @@ describe("Integration test", function () {
     await initAndDeploy();
   });
 
-  it("should buy a vault", async function () {
-    let price = await factory.finalPrice(usdc.address);
-    await usdc.approve(factory.address, price);
-    const nextTokenId = await vault.nextTokenId();
-    await expect(factory.buySerpents(usdc.address, 1))
-      .to.emit(vault, "Transfer")
-      .withArgs(addr0, deployer.address, nextTokenId);
-  });
-
-  async function buyVault(token, amount, buyer) {
+  async function buyNFT(token, amount, buyer) {
     let price = await factory.finalPrice(token.address);
     await token.connect(buyer).approve(factory.address, price.mul(amount));
-    let nextTokenId = await vault.nextTokenId();
+    let nextTokenId = await nft.nextTokenId();
 
-    await expect(factory.connect(buyer).buySerpents(token.address, amount))
-      .to.emit(vault, "Transfer")
-      .withArgs(addr0, buyer.address, nextTokenId)
-      .to.emit(vault, "Transfer")
-      .withArgs(addr0, buyer.address, nextTokenId.add(1))
-      .to.emit(token, "Transfer")
-      .withArgs(buyer.address, factory.address, price.mul(amount));
+    await expect(factory.connect(buyer).buy(token.address, amount))
+      .to.emit(nft, "Transfer")
+      .withArgs(addr0, buyer.address, nextTokenId);
+
+    return nextTokenId;
   }
 
-  it("should allow bob to collect some badges and transfer some transferable ones", async function () {
-    let nextTokenId = await vault.nextTokenId();
-    await buyVault(usdc, 2, bob);
-    await buyVault(usdc, 2, alice);
+  it("should allow bob to collect some badges and transfer some transferable ones plugging an upgradeable plugin", async function () {
+    let tokenId = await buyNFT(usdc, 1, bob);
 
-    let price = await factory.finalPrice(usdc.address);
-    expect(price.toString()).to.equal("9900000000000000000");
-
-    await expect(factory.withdrawProceeds(fred.address, usdc.address, normalize("10")))
-      .to.emit(usdc, "Transfer")
-      .withArgs(factory.address, fred.address, normalize("10"));
-
-    await expect(factory.withdrawProceeds(fred.address, usdc.address, 0))
-      .to.emit(usdc, "Transfer")
-      .withArgs(factory.address, fred.address, amount("29.6"));
-
-    const managerAddress = await vault.managerOf(nextTokenId);
+    const managerAddress = await nft.managerOf(tokenId);
     const manager = await ethers.getContractAt("CrunaManager", managerAddress);
 
-    const selector = await CrunaTestUtils.selectorId("ICrunaManager", "setProtector");
+    await expect(
+      manager
+        .connect(bob)
+        .plug("BadgeCollectorUpgradeablePlugin", upgradeablePluginProxy.address, false, false, "0x00000000", 0, 0, 0),
+    ).to.emit(manager, "PluginStatusChange");
+
+    // get the plugin address
+
+    const nameId = bytes4(keccak256("BadgeCollectorUpgradeablePlugin"));
+    const pluginAddress = await manager.pluginAddress(nameId, "0x00000000");
+    const plugin = await ethers.getContractAt("BadgeCollectorUpgradeablePlugin", pluginAddress);
+
+    let id = 1;
+
+    await expect(collBadge.safeMint(plugin.address, id)).to.emit(collBadge, "Transfer").withArgs(addr0, plugin.address, id);
+
+    await expect(magicBadge.safeMint(plugin.address, id)).to.emit(magicBadge, "Transfer").withArgs(addr0, plugin.address, id);
+
+    await expect(superTransferableBadge.safeMint(plugin.address, id))
+      .to.emit(superTransferableBadge, "Transfer")
+      .withArgs(addr0, plugin.address, id);
+
+    await expect(plugin.connect(bob).transferBadge(collBadge.address, id, 0, 0, 0)).to.be.revertedWith("NotTransferable");
+
+    await expect(plugin.connect(bob).transferBadge(magicBadge.address, id, 0, 0, 0)).to.be.revertedWith("NotTransferable");
+
+    await expect(plugin.connect(bob).transferBadge(superTransferableBadge.address, id, 0, 0, 0))
+      .emit(superTransferableBadge, "Transfer")
+      .withArgs(plugin.address, bob.address, id);
+
+    id = 2;
+
+    await expect(collBadge.safeMint(plugin.address, id)).to.emit(collBadge, "Transfer").withArgs(addr0, plugin.address, id);
+
+    await expect(magicBadge.safeMint(plugin.address, id)).to.emit(magicBadge, "Transfer").withArgs(addr0, plugin.address, id);
+
+    await expect(superTransferableBadge.safeMint(plugin.address, id))
+      .to.emit(superTransferableBadge, "Transfer")
+      .withArgs(addr0, plugin.address, id);
 
     await expect(manager.connect(bob).setProtectors([alice.address]))
       .to.emit(manager, "ProtectorChange")
-      .withArgs(nextTokenId, alice.address, true)
-      .to.emit(vault, "Locked")
-      .withArgs(nextTokenId, true);
-    const chainId = await getChainId();
-    const ts = (await getTimestamp()) - 100;
+      .withArgs(tokenId, alice.address, true)
+      .to.emit(nft, "Locked")
+      .withArgs(tokenId, true);
 
-    return;
+    const chainId = await getChainId();
+    const ts = await getTimestamp();
+    const selector = await CrunaTestUtils.selectorId("BadgeCollectorUpgradeablePlugin", "transferBadge");
+
     let signature = (
       await CrunaTestUtils.signRequest(
         selector,
         bob.address,
-        alice.address,
-        vault.address,
-        nextTokenId,
-        1,
+        superTransferableBadge.address,
+        nft.address,
+        tokenId,
+        id,
         0,
         0,
         ts,
         3600,
         chainId,
         alice.address,
-        manager,
+        plugin,
       )
     )[0];
 
     // set Alice as first Bob's protector
-    await expect(manager.connect(bob).setProtector(alice.address, true, ts, 3600, signature))
-      .to.emit(manager, "ProtectorChange")
-      .withArgs(nextTokenId, alice.address, true)
-      .to.emit(vault, "Locked")
-      .withArgs(nextTokenId, true);
+    await expect(plugin.connect(bob).transferBadge(superTransferableBadge.address, id, ts, 3600, signature))
+      .to.emit(superTransferableBadge, "Transfer")
+      .withArgs(plugin.address, bob.address, id);
   });
 });
