@@ -34,7 +34,7 @@ describe("LendingRules Contract Tests", function () {
   });
 
   describe("Setting and Getting Fees", function () {
-    it("Should allow setting and retrieving special fees for a depositor", async function () {
+    it("Should allow setting and retrieving fees for a depositor", async function () {
       await lendingRules.setFees(mayG.address, 200, 100);
       const fees = await lendingRules.getFees(mayG.address);
       expect(fees.depositFee).to.equal(200);
@@ -46,7 +46,7 @@ describe("LendingRules Contract Tests", function () {
       await expect(lendingRules.setFees(ethers.constants.AddressZero, 100, 50)).to.be.revertedWith("InvalidAddress");
     });
 
-    it("Should allow setting and retrieving special fees for a depositor", async function () {
+    it("Should allow setting and retrieving fees for a depositor", async function () {
       await lendingRules.setFees(mayG.address, 200, 100);
       const fees = await lendingRules.getFees(mayG.address);
       expect(fees.depositFee).to.equal(200);
