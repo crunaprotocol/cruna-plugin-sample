@@ -8,43 +8,49 @@ contract LendingRules is Ownable {
   error InvalidAddress();
   error InvalidFees();
 
-  struct Fees {
-    uint256 depositFee; // Fee for depositing assets
-    uint256 activationFee; // Fee for plugin activation by users
+  struct DepositFee {
+    uint256 depositFee; // Fee for depositing assets by each project/depositor
   }
 
-  mapping(address => Fees) public feesMapping; // Mapping to store fees for each project/depositor
-  address public treasuryWallet; // Treasury wallet address
+  uint256 private _activationFee; // Global activation fee for using the plugin
+  mapping(address => DepositFee) private _feesMapping; // Mapping to store deposit fees for each project/depositor
+  address private _treasuryWallet; // Treasury wallet address
 
-  // Events for logging changes
-  event FeesSet(address indexed depositor, uint256 depositFee, uint256 activationFee);
+  event DepositFeeSet(address indexed depositor, uint256 depositFee);
+  event ActivationFeeSet(uint256 activationFee);
   event TreasuryWalletUpdated(address newTreasuryWallet);
 
-  constructor(address _initialOwner, address _treasuryWallet) Ownable(_initialOwner) {
-    setTreasuryWallet(_treasuryWallet);
+  constructor(address initialOwner, address treasuryWallet, uint256 activationFee) Ownable(initialOwner) {
+    setTreasuryWallet(treasuryWallet);
+    setActivationFee(activationFee);
   }
 
-  // Function to set fees for a project/depositor
-  function setFees(address _depositor, uint256 _depositFee, uint256 _activationFee) public onlyOwner {
-    if (_depositor == address(0)) revert InvalidAddress();
-    feesMapping[_depositor] = Fees(_depositFee, _activationFee);
-    emit FeesSet(_depositor, _depositFee, _activationFee);
+  function setDepositFee(address depositor, uint256 depositFee) public onlyOwner {
+    if (depositor == address(0)) revert InvalidAddress();
+    _feesMapping[depositor] = DepositFee(depositFee);
+    emit DepositFeeSet(depositor, depositFee);
   }
 
-  // Function to update the treasury wallet address
-  function setTreasuryWallet(address _newTreasuryWallet) public onlyOwner {
-    if (_newTreasuryWallet == address(0)) revert TreasuryWalletZeroAddress();
-    treasuryWallet = _newTreasuryWallet;
-    emit TreasuryWalletUpdated(_newTreasuryWallet);
+  function setActivationFee(uint256 activationFee) public onlyOwner {
+    _activationFee = activationFee;
+    emit ActivationFeeSet(activationFee);
   }
 
-  // Function to retrieve fees for a specific project/depositor
-  function getFees(address _depositor) public view returns (Fees memory) {
-    return feesMapping[_depositor];
+  function setTreasuryWallet(address newTreasuryWallet) public onlyOwner {
+    if (newTreasuryWallet == address(0)) revert TreasuryWalletZeroAddress();
+    _treasuryWallet = newTreasuryWallet;
+    emit TreasuryWalletUpdated(newTreasuryWallet);
   }
 
-  // Retrieve the treasury wallet address
+  function getDepositFee(address depositor) public view returns (uint256) {
+    return _feesMapping[depositor].depositFee;
+  }
+
+  function getActivationFee() public view returns (uint256) {
+    return _activationFee;
+  }
+
   function getTreasuryWallet() public view returns (address) {
-    return treasuryWallet;
+    return _treasuryWallet;
   }
 }
