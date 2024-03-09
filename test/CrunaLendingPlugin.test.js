@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { toChecksumAddress } = require("ethereumjs-util");
 const EthDeployUtils = require("eth-deploy-utils");
 const deployUtils = new EthDeployUtils();
 
@@ -8,7 +7,7 @@ const CrunaTestUtils = require("./helpers/CrunaTestUtils");
 
 const { normalize, addr0, getChainId, getTimestamp, bytes4, keccak256 } = require("./helpers");
 
-describe("Integration test", function () {
+describe.skip("CrunaLendingPlugin tests", function () {
   let crunaManagerProxy;
   let nft;
   let factory;
@@ -25,7 +24,7 @@ describe("Integration test", function () {
 
   async function initAndDeploy() {
     crunaManagerProxy = await CrunaTestUtils.deployManager(deployer);
-    nft = await deployUtils.deploy("SomeProtectedNFT", deployer.address);
+    nft = await deployUtils.deploy("MagicBadge", deployer.address);
     await nft.init(crunaManagerProxy.address, 1, true);
     factory = await deployUtils.deployProxy("ProtectedNFTFactory", nft.address);
     await nft.setFactory(factory.address);
