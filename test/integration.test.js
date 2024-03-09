@@ -26,7 +26,7 @@ describe("Integration test", function () {
   async function initAndDeploy() {
     crunaManagerProxy = await CrunaTestUtils.deployManager(deployer);
     nft = await deployUtils.deploy("SomeProtectedNFT", deployer.address);
-    await nft.init(crunaManagerProxy.address, 1, true);
+    await nft.init(crunaManagerProxy.address, true, true, 1, 0);
     factory = await deployUtils.deployProxy("ProtectedNFTFactory", nft.address);
     await nft.setFactory(factory.address);
 
@@ -62,7 +62,7 @@ describe("Integration test", function () {
   async function buyNFT(token, amount, buyer) {
     let price = await factory.finalPrice(token.address);
     await token.connect(buyer).approve(factory.address, price.mul(amount));
-    let nextTokenId = await nft.nextTokenId();
+    let nextTokenId = (await nft.nftConf()).nextTokenId;
 
     await expect(factory.connect(buyer).buy(token.address, amount))
       .to.emit(nft, "Transfer")
@@ -117,17 +117,36 @@ describe("Integration test", function () {
       .to.emit(superTransferableBadge, "Transfer")
       .withArgs(addr0, plugin.address, id);
 
-    await expect(manager.connect(bob).setProtectors([alice.address]))
-      .to.emit(manager, "ProtectorChange")
-      .withArgs(tokenId, alice.address, true)
-      .to.emit(nft, "Locked")
-      .withArgs(tokenId, true);
-
-    const chainId = await getChainId();
-    const ts = await getTimestamp();
-    const selector = await CrunaTestUtils.selectorId("BadgeCollectorUpgradeablePlugin", "transferBadge");
+    let selector = await CrunaTestUtils.selectorId("ICrunaManager", "setProtector");
+    let chainId = await getChainId();
+    let ts = (await getTimestamp()) - 100;
 
     let signature = (
+      await CrunaTestUtils.signRequest(
+        selector,
+        bob.address,
+        alice.address,
+        nft.address,
+        tokenId,
+        1,
+        0,
+        0,
+        ts,
+        3600,
+        chainId,
+        alice.address,
+        manager,
+      )
+    )[0];
+
+    // set Alice as first Bob's protector
+    await manager.connect(bob).setProtector(alice.address, true, ts, 3600, signature);
+
+    chainId = await getChainId();
+    ts = await getTimestamp();
+    selector = await CrunaTestUtils.selectorId("BadgeCollectorUpgradeablePlugin", "transferBadge");
+
+    signature = (
       await CrunaTestUtils.signRequest(
         selector,
         bob.address,
