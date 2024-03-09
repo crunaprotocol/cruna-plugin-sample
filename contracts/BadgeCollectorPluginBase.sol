@@ -21,11 +21,11 @@ abstract contract BadgeCollectorPluginBase is CrunaPluginBase, IERC721Receiver {
   }
 
   function _isProtected() internal view virtual override returns (bool) {
-    return manager.hasProtectors();
+    return _conf.manager.hasProtectors();
   }
 
   function _isProtector(address protector) internal view virtual override returns (bool) {
-    return manager.isAProtector(protector);
+    return _conf.manager.isProtector(protector);
   }
 
   function requiresToManageTransfer() external pure override returns (bool) {
