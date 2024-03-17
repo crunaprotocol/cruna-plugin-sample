@@ -63,17 +63,20 @@ describe("Integration test", function () {
     let price = await factory.finalPrice(token.address);
     await token.connect(buyer).approve(factory.address, price.mul(amount));
     let nextTokenId = (await nft.nftConf()).nextTokenId;
-
-    await expect(factory.connect(buyer).buy(token.address, amount))
-      .to.emit(nft, "Transfer")
-      .withArgs(addr0, buyer.address, nextTokenId);
-
-    return nextTokenId;
+    let ret = [];
+    const e = expect(factory.connect(buyer).buy(token.address, amount))
+      .to.emit(token, "Transfer")
+      .withArgs(buyer.address, factory.address, price.mul(amount));
+    for (let i = 0; i < amount; i++) {
+      ret.push(nextTokenId.add(i));
+      e.to.emit(nft, "Transfer").withArgs(addr0, buyer.address, nextTokenId.add(i));
+    }
+    await e;
+    return ret;
   }
 
   it("should allow bob to collect some badges and transfer some transferable ones plugging an upgradeable plugin", async function () {
-    let tokenId = await buyNFT(usdc, 1, bob);
-
+    let tokenId = (await buyNFT(usdc, 1, bob))[0];
     const managerAddress = await nft.managerOf(tokenId);
     const manager = await ethers.getContractAt("CrunaManager", managerAddress);
 

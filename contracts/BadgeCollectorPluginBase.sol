@@ -20,6 +20,10 @@ abstract contract BadgeCollectorPluginBase is CrunaPluginBase, IERC721Receiver {
     return IERC721Receiver.onERC721Received.selector;
   }
 
+  function isERC6551Account() external pure returns (bool) {
+    return false;
+  }
+
   function _isProtected() internal view virtual override returns (bool) {
     return _conf.manager.hasProtectors();
   }
