@@ -11,8 +11,4 @@ contract BadgeCollectorSimplePlugin is BadgeCollectorPluginBase {
   function _nameId() internal view virtual override returns (bytes4) {
     return bytes4(keccak256("BadgeCollectorSimplePlugin"));
   }
-
-  function upgrade(address) external pure override {
-    revert NotUpgradeable();
-  }
 }
