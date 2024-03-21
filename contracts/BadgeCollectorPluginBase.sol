@@ -11,7 +11,7 @@ abstract contract BadgeCollectorPluginBase is CrunaPluginBase, IERC721Receiver {
 
   error InvalidValidity();
 
-  function supportsInterface(bytes4 interfaceId) public pure virtual returns (bool) {
+  function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
     return (interfaceId == type(IERC721Receiver).interfaceId || interfaceId == type(IERC165).interfaceId);
   }
 
@@ -20,7 +20,7 @@ abstract contract BadgeCollectorPluginBase is CrunaPluginBase, IERC721Receiver {
     return IERC721Receiver.onERC721Received.selector;
   }
 
-  function isERC6551Account() external pure returns (bool) {
+  function isERC6551Account() external pure override returns (bool) {
     return false;
   }
 
@@ -40,7 +40,7 @@ abstract contract BadgeCollectorPluginBase is CrunaPluginBase, IERC721Receiver {
     // do nothing because it does not need any reset
   }
 
-  function requiresResetOnTransfer() external pure returns (bool) {
+  function requiresResetOnTransfer() external pure override returns (bool) {
     return false;
   }
 

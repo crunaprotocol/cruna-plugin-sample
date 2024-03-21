@@ -26,7 +26,7 @@ describe("Integration test", function () {
   async function initAndDeploy() {
     crunaManagerProxy = await CrunaTestUtils.deployManager(deployer);
     nft = await deployUtils.deploy("SomeProtectedNFT", deployer.address);
-    await nft.init(crunaManagerProxy.address, true, true, 1, 0);
+    await nft.init(crunaManagerProxy.address, true, 1, 0);
     factory = await deployUtils.deployProxy("ProtectedNFTFactory", nft.address);
     await nft.setFactory(factory.address);
 
