@@ -13,6 +13,13 @@ contract BadgeCollectorUpgradeablePlugin is BadgeCollectorPluginBase {
   Guardian public guardian;
   address private constant _GUARDIAN_SETTER = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
 
+  /**
+   * @notice Storage slot with the address of the current implementation.
+   * This is the keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1, and is
+   * validated in the constructor.
+   */
+  bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
   error NotTheGuardianSetter();
   error GuardianAlreadySet();
   error NotTrustedImplementation();
