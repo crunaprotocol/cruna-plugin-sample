@@ -63,7 +63,7 @@
     "rimraf": "^5.0.5",
     "solhint": "^4.5.2",
     "solidity-coverage": "^0.8.11",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.4"
   },
   "lint-staged": {
     "*.js": "prettier --write",
