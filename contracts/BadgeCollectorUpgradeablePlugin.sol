@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
-import {ICrunaPlugin} from "@cruna/protocol/plugins/ICrunaPlugin.sol";
+import {ICrunaManagedService} from "@cruna/protocol/services/ICrunaManagedService.sol";
 
 import {Guardian} from "./Guardian.sol";
 import {BadgeCollectorPluginBase} from "./BadgeCollectorPluginBase.sol";
@@ -43,7 +43,7 @@ contract BadgeCollectorUpgradeablePlugin is BadgeCollectorPluginBase {
     if (implementation_ == address(0)) revert ZeroAddress();
     bool trusted = guardian.trusted(implementation_);
     if (!trusted) revert NotTrustedImplementation();
-    ICrunaPlugin impl = ICrunaPlugin(implementation_);
+    ICrunaManagedService impl = ICrunaManagedService(implementation_);
     uint256 version_ = impl.version();
     if (version_ <= _version()) revert InvalidPluginVersion(_version(), version_);
     uint256 requiredVersion = impl.requiresManagerVersion();
