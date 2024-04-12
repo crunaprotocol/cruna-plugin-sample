@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {CrunaPluginBase} from "@cruna/protocol/plugins/CrunaPluginBase.sol";
+import {CrunaManagedService} from "@cruna/protocol/services/CrunaManagedService.sol";
 
-abstract contract BadgeCollectorPluginBase is CrunaPluginBase, IERC721Receiver {
+abstract contract BadgeCollectorPluginBase is CrunaManagedService, IERC721Receiver {
   event BadgeCollected(address indexed badgeAddress, uint256 indexed badgeTokenId, address from, uint256 timestamp);
 
   error InvalidValidity();
@@ -18,34 +18,6 @@ abstract contract BadgeCollectorPluginBase is CrunaPluginBase, IERC721Receiver {
   function onERC721Received(address, address from, uint256 receivedTokenId, bytes memory) external virtual returns (bytes4) {
     emit BadgeCollected(_msgSender(), receivedTokenId, from, block.timestamp);
     return IERC721Receiver.onERC721Received.selector;
-  }
-
-  function isERC6551Account() external pure override returns (bool) {
-    return false;
-  }
-
-  function _isProtected() internal view virtual override returns (bool) {
-    return _conf.manager.hasProtectors();
-  }
-
-  function _isProtector(address protector) internal view virtual override returns (bool) {
-    return _conf.manager.isProtector(protector);
-  }
-
-  function requiresToManageTransfer() external pure override returns (bool) {
-    return false;
-  }
-
-  function reset() external override {
-    // do nothing because it does not need any reset
-  }
-
-  function requiresResetOnTransfer() external pure override returns (bool) {
-    return false;
-  }
-
-  function _reset() internal {
-    // nothing to reset
   }
 
   function transferBadge(
