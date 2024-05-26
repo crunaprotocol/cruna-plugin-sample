@@ -94,10 +94,7 @@ describe("Integration test", function () {
 
     pluginKey32 = pluginKey("BadgeCollectorUpgradeablePlugin", upgradeablePluginProxy.address, "0x00000000");
 
-    await expect(manager.connect(bob).plug(pluginKey32, false, false, "0x00000000", 0, 0, 0)).to.emit(
-      manager,
-      "PluginStatusChange",
-    );
+    await expect(manager.connect(bob).plug(pluginKey32, false, false, "0x", 0, 0, 0)).to.emit(manager, "PluginStatusChange");
 
     // get the plugin address
 
