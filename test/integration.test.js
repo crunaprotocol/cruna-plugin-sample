@@ -101,7 +101,6 @@ describe("Integration test", function () {
 
     // get the plugin address
 
-    const nameId = bytes4(keccak256("BadgeCollectorUpgradeablePlugin"));
     const pluginAddress = await manager.pluginAddress(pluginKey32);
     const plugin = await ethers.getContractAt("BadgeCollectorUpgradeablePlugin", pluginAddress);
 
