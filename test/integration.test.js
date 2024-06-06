@@ -4,9 +4,20 @@ const { toChecksumAddress } = require("ethereumjs-util");
 const EthDeployUtils = require("eth-deploy-utils");
 const deployUtils = new EthDeployUtils();
 
-const CrunaTestUtils = require("./helpers/CrunaTestUtils");
-
-const { normalize, addr0, getChainId, getTimestamp, bytes4, keccak256 } = require("./helpers");
+const {
+  deployCanonical,
+  deployManager,
+  normalize,
+  addr0,
+  getChainId,
+  getTimestamp,
+  bytes4,
+  keccak256,
+  cl,
+  pluginKey,
+  selectorId,
+  signRequest,
+} = require("./helpers/CrunaTestUtils");
 
 describe("Integration test", function () {
   let crunaManagerProxy;
@@ -17,14 +28,15 @@ describe("Integration test", function () {
   let magicBadge, collBadge, superTransferableBadge;
   let simplePlugin, upgradeablePluginImpl, upgradeablePluginProxy;
   let erc6551Registry, crunaRegistry, crunaGuardian;
+  let pluginKey32;
 
   before(async function () {
     [deployer, bob, alice] = await ethers.getSigners();
-    [erc6551Registry, crunaRegistry, crunaGuardian] = await CrunaTestUtils.deployCanonical(deployer);
+    [erc6551Registry, crunaRegistry, crunaGuardian] = await deployCanonical(deployer);
   });
 
   async function initAndDeploy() {
-    crunaManagerProxy = await CrunaTestUtils.deployManager(deployer);
+    crunaManagerProxy = await deployManager(deployer);
     nft = await deployUtils.deploy("SomeProtectedNFT", deployer.address);
     await nft.init(crunaManagerProxy.address, true, 1, 0);
     factory = await deployUtils.deployProxy("ProtectedNFTFactory", nft.address);
@@ -80,16 +92,13 @@ describe("Integration test", function () {
     const managerAddress = await nft.managerOf(tokenId);
     const manager = await ethers.getContractAt("CrunaManager", managerAddress);
 
-    await expect(
-      manager
-        .connect(bob)
-        .plug("BadgeCollectorUpgradeablePlugin", upgradeablePluginProxy.address, false, false, "0x00000000", 0, 0, 0),
-    ).to.emit(manager, "PluginStatusChange");
+    pluginKey32 = pluginKey("BadgeCollectorUpgradeablePlugin", upgradeablePluginProxy.address, "0x00000000");
+
+    await expect(manager.connect(bob).plug(pluginKey32, false, false, "0x", 0, 0, 0)).to.emit(manager, "PluginStatusChange");
 
     // get the plugin address
 
-    const nameId = bytes4(keccak256("BadgeCollectorUpgradeablePlugin"));
-    const pluginAddress = await manager.pluginAddress(nameId, "0x00000000");
+    const pluginAddress = await manager.pluginAddress(pluginKey32);
     const plugin = await ethers.getContractAt("BadgeCollectorUpgradeablePlugin", pluginAddress);
 
     let id = 1;
@@ -120,12 +129,12 @@ describe("Integration test", function () {
       .to.emit(superTransferableBadge, "Transfer")
       .withArgs(addr0, plugin.address, id);
 
-    let selector = await CrunaTestUtils.selectorId("ICrunaManager", "setProtector");
+    let selector = await selectorId("ICrunaManager", "setProtector");
     let chainId = await getChainId();
     let ts = (await getTimestamp()) - 100;
 
     let signature = (
-      await CrunaTestUtils.signRequest(
+      await signRequest(
         selector,
         bob.address,
         alice.address,
@@ -147,10 +156,10 @@ describe("Integration test", function () {
 
     chainId = await getChainId();
     ts = await getTimestamp();
-    selector = await CrunaTestUtils.selectorId("BadgeCollectorUpgradeablePlugin", "transferBadge");
+    selector = await selectorId("BadgeCollectorUpgradeablePlugin", "transferBadge");
 
     signature = (
-      await CrunaTestUtils.signRequest(
+      await signRequest(
         selector,
         bob.address,
         superTransferableBadge.address,

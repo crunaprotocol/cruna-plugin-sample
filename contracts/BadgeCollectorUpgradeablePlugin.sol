@@ -46,7 +46,7 @@ contract BadgeCollectorUpgradeablePlugin is BadgeCollectorPluginBase {
     ICrunaManagedService impl = ICrunaManagedService(implementation_);
     uint256 version_ = impl.version();
     if (version_ <= _version()) revert InvalidPluginVersion(_version(), version_);
-    uint256 requiredVersion = impl.requiresManagerVersion();
+    uint256 requiredVersion = impl.requiredManagerVersion();
     if (_conf.manager.version() < requiredVersion) revert PluginRequiresNewerManager(requiredVersion);
     StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = implementation_;
   }
