@@ -1,6 +1,6 @@
 {
-  "name": "cruna-publin-sample",
-  "version": "0.0.1",
+  "name": "cruna-plugin-sample",
+  "version": "0.0.2",
   "description": "A Cruna Protocol NFT boilerplate",
   "scripts": {
     "clean": "rimraf artifacts cache coverage coverage.json",
