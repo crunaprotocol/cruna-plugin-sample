@@ -37,7 +37,18 @@ contract SomeProtectedNFT is CrunaProtectedNFTOwnable {
 
   // @dev This function will mint a new token
   // @param to The address of the recipient
-  function safeMintAndActivate(address to, uint256 amount) public virtual onlyFactory {
+  // @param amount The amount of tokens to mint
+  function safeMintAndActivate(address to, uint256 amount) external virtual onlyFactory {
     _mintAndActivateByAmount(to, amount);
+  }
+
+  // @dev This mint a token and deploy a specific plugin
+  // @param to The address of the recipient
+  // @param key_ The key of the plugin
+  // @param data The data to pass to the plugin
+  function safeMintAndPlugUnmanaged(address to, bytes32 key_, bytes calldata data) external virtual onlyOwner {
+    _safeMint(to, _nftConf.nextTokenId);
+    _plug(key_, _nftConf.nextTokenId, false, data);
+    ++_nftConf.nextTokenId;
   }
 }

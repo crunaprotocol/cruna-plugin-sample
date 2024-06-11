@@ -27,6 +27,7 @@ describe("Integration test", function () {
   let deployer, bob, alice;
   let magicBadge, collBadge, superTransferableBadge;
   let simplePlugin, upgradeablePluginImpl, upgradeablePluginProxy;
+  let fungiblePlugin;
   let erc6551Registry, crunaRegistry, crunaGuardian;
   let pluginKey32;
 
@@ -57,6 +58,8 @@ describe("Integration test", function () {
     upgradeablePluginImpl = await deployUtils.deploy("BadgeCollectorUpgradeablePlugin");
     upgradeablePluginProxy = await deployUtils.deploy("BadgeCollectorUpgradeablePluginProxy", upgradeablePluginImpl.address);
     upgradeablePluginProxy = await deployUtils.attach("BadgeCollectorUpgradeablePlugin", upgradeablePluginProxy.address);
+
+    fungiblePlugin = await deployUtils.deploy("FungibleUnmanagedService");
 
     await usdc.mint(deployer.address, normalize("10000"));
     await usdc.mint(bob.address, normalize("1000"));
@@ -180,5 +183,23 @@ describe("Integration test", function () {
     await expect(plugin.connect(bob).transferBadge(superTransferableBadge.address, id, ts, 3600, signature))
       .to.emit(superTransferableBadge, "Transfer")
       .withArgs(plugin.address, bob.address, id);
+  });
+
+  it("should allow bob to mint a token while plugging an unmanaged service", async function () {
+    let tokenId = (await nft.nftConf()).nextTokenId;
+
+    pluginKey32 = pluginKey("FungibleUnmanagedService", fungiblePlugin.address, "0x00000000");
+
+    const data = ethers.utils.defaultAbiCoder.encode(
+      ["string", "string"], // Types of the parameters
+      ["Fungible Service", "FUS"], // Values to encode
+    );
+
+    await nft.safeMintAndPlugUnmanaged(bob.address, pluginKey32, data);
+    expect(await nft.ownerOf(tokenId)).to.equal(bob.address);
+    expect(await nft.isDeployed(pluginKey32, tokenId, false)).to.be.true;
+    let addr = await nft.addressOfDeployed(pluginKey32, tokenId, false);
+    let plugin = await ethers.getContractAt("FungibleUnmanagedService", addr);
+    expect(await plugin.extraName()).to.equal("FT BadgeCollectorProtectedNFT #1");
   });
 });
