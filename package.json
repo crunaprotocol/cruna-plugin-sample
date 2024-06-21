@@ -28,7 +28,6 @@
   "homepage": "https://github.com/cruna-cc/cruna-publin-sample#readme",
   "license": "MIT",
   "devDependencies": {
-    "@cruna/protocol": "^0.8.2",
     "@ethersproject/contracts": "^5.7.0",
     "@metamask/eth-sig-util": "^7.0.2",
     "@ndujalabs/erc721lockable": "^0.13.0",
@@ -64,13 +63,14 @@
     "rimraf": "^5.0.7",
     "solhint": "^4.5.4",
     "solidity-coverage": "^0.8.12",
-    "typescript": "^5.4.5"
+    "typescript": "^5.5.2"
   },
   "lint-staged": {
     "*.js": "prettier --write",
     "*.{js,css,md}": "prettier --write"
   },
   "dependencies": {
-    "erc7656": "^0.1.0"
+    "@cruna/protocol": "^0.8.3",
+    "erc7656": "^0.2.0"
   }
 }
